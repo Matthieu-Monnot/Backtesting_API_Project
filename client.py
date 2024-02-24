@@ -1,3 +1,4 @@
+import pandas as pd
 import requests
 import json
 
@@ -19,7 +20,7 @@ params = {
     "func_strat": fonction_trading,
     "requirements": ["import pandas as pd"],
     "tickers": ["ETHBTC", "BNBETH"],
-    "dates_calibration": ["2023-01-01", "2023-01-04"],
+    "dates_calibration": ["2023-01-01", "2023-01-15"],
     "dates_test" : ["2023-01-01", "2024-01-01"],
     "interval": "1d",
     "amount": "10000"
