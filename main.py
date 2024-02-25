@@ -1,4 +1,6 @@
 import requests
+import subprocess
+import platform
 import pandas as pd
 
 
@@ -47,9 +49,40 @@ def load_all_data(assets, start, end):
     return data
 
 
+def create_venv(name, packages):
+    try:
+        subprocess.run(["python", "-m", "venv", name], check=True)
+    except subprocess.CalledProcessError:
+        return f"Erreur lors de la création de l'environnement virtuel {name}"
+
+    system = platform.system()
+    activate_cmd = f"{name}/Scripts/activate" if system == 'Windows' else f"{name}/bin/activate"
+    subprocess.run([activate_cmd], shell=True)
+
+    packages_not_installed = []
+    for package in packages:
+        try:
+            subprocess.run(["pip", "install", package], check=True)
+        except subprocess.CalledProcessError:
+            packages_not_installed.append(package)
+
+    subprocess.run(["deactivate"], shell=True)
+
+    if packages_not_installed:
+        return f"Les packages suivants n'ont pas pu être installés : {', '.join(packages_not_installed)}"
+    else:
+        return f"Tous les packages ont été installés avec succès dans l'environnement virtuel {name}"
+
+
 if __name__ == "__main__":
+    """
     start = pd.Timestamp(json_data["start"])
     end = pd.Timestamp(json_data["end"])
     assets = json_data["assets"]
     dict_data = load_all_data(assets=assets, start=start, end=end)
     print(dict_data["BTC"])
+    """
+    packages_to_install = ["numpy", "pandas","zblurb", "matplotlib"]
+    result_message = create_venv("mon_env", packages_to_install)
+    print(result_message)
+
