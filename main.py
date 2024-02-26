@@ -1,6 +1,6 @@
 import requests
 import pandas as pd
-
+from stats import equal_weighted, Stats
 
 json_data = {
     'code': 'ok',
@@ -53,3 +53,8 @@ if __name__ == "__main__":
     assets = json_data["assets"]
     dict_data = load_all_data(assets=assets, start=start, end=end)
     print(dict_data["BTC"])
+
+    weights_ts = equal_weighted(dict_data)
+    stats = Stats(weights_ts, dict_data)
+    stats_json = stats.to_json()
+    print(stats_json)
