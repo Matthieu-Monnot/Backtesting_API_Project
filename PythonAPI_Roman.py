@@ -1,10 +1,11 @@
 import pandas as pd
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from datetime import datetime
 from Data_collector import collect_APIdata
-import numpy as np
-from fastapi.responses import JSONResponse
+import subprocess
+import sys
+import os
+import json
 
 
 app = FastAPI()
@@ -27,42 +28,52 @@ class User_input(BaseModel):
     dates_test : list[str]
     interval: str
     amount: str
+    rqt_name : str
 
 # Création de la route
 @app.post('/backtesting/')
 async def backtest(input: User_input):
     try:
         user_data = collect_APIdata(input.tickers, input.dates_calibration, input.interval)
-        if not isinstance(user_data, pd.DataFrame):
-            return print("pas un df pandas")
-        else:
-            pass
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f'la récupération des données de calibration de la \n'
-                                                    f'stratégie à échouée : {str(e)}.')
-    context = {}
-    for requirement in input.requirements:
-        exec(requirement, {}, context)
+    except HTTPException as e:
+        raise HTTPException(status_code=400, detail=f'erreur : {str(e)}')
+    # save du dataframe en json
+    user_data.to_json("user_data.json", orient="index", date_format="iso", indent=4)
 
+    with open("user_function.py", "w") as file:
+        file.write(input.func_strat)
+
+    result = create_venv(input.rqt_name, input.requirements, "user_function.py")
+    return result
+
+def create_venv(name, packages, funct):
+    # Création de l'environnement virtuel
     try:
-        exec(input.func_strat, context, context)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f'Impossible de run la fonction de trading : {str(e)}')
+        subprocess.run([sys.executable, "-m", "venv", name], check=True)
+    except subprocess.CalledProcessError as e:
+        print(f'erreur : {str(e)}')
 
-    user_tradfunc = context.get("trading_strat")
-    if not user_tradfunc:
-        raise HTTPException(status_code=400, detail="La fonction n'as pas été définie correctement")
+    # Création du chemin vers le pip executable pour l'env virtuel
+    pip_route = os.path.join(name, "Scripts" if os.name == "nt" else "bin", "pip")
 
+    # Installation des packages
     try:
-        col = [x + '_close' for x in input.tickers]
-        user_data = user_data[col]
-        results = user_tradfunc(user_data, float(input.amount))
-        results.columns = user_data.columns
-        portfolio = results.astype(float).multiply(user_data.astype(float), axis="index")
-        portfolio = portfolio.to_dict(orient="records")
-        if not isinstance(results, pd.DataFrame):
-            raise ValueError('pas df pd')
-        else:
-            return JSONResponse(content=portfolio)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Impossible de tester la fonction sur données réelles : {str(e)}")
+        for package in packages:
+            subprocess.run([pip_route, "install", package], check=True)
+    except subprocess.CalledProcessError as e:
+        print(f'erreur : {str(e)}')
+
+    #
+    python_executable = os.path.join(name, "Scripts" if os.name == "nt" else "bin", "python")
+    function_path = os.path.abspath(funct)
+    wrapper_path = os.path.abspath("script_wrapper.py")
+    data_path = os.path.abspath("user_data.json")
+    try:
+        result = subprocess.run([python_executable, wrapper_path, data_path, function_path], capture_output=True, check=True, text=True)
+        response = result.stdout
+        print(response)
+    except subprocess.CalledProcessError as e:
+        error = e.stderr
+        print(error)
+        return error
+    return response
