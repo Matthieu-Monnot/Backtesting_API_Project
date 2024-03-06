@@ -1,25 +1,46 @@
-import pandas as pd
 import requests
-import json
 
-url = "http://127.0.0.1:8000/backtesting/"
-
+#url = "http://127.0.0.1:8000/backtesting/"
+url = "https://backtestapi.onrender.com/backtesting/"
 fonction_trading = """
 import pandas
-def func_strat(data, amount=1000):
-    nb_assets = len(data.columns)
-    w = 1.0/nb_assets
-    pos = pandas.DataFrame(index=data.index)
-    for col in data.columns:
-        pos[col + '_pos'] = amount*w
-    return pos
+def func_strat(dfs_dict):
+    df_returns = pandas.DataFrame()
+    for key, df in dfs_dict.items():
+        df_returns[key] = df["Close"]
+    df_returns = df_returns.pct_change().fillna(0)
+    nb_actifs = len(df_returns.columns)
+    pond = {col: 1.0 / nb_actifs for col in df_returns.columns}
+    poids_ts = pandas.DataFrame(index=df_returns.index, columns=df_returns.columns)
+
+    changement_pond = 0.1
+
+    for i, date in enumerate(df_returns.index):
+
+        if i % 2 == 0 and i > 0:
+            total_pond = 0
+            for col in df_returns.columns:
+                rendement_2_jours = df_returns[col].iloc[i] - df_returns[col].iloc[i - 2]
+                if rendement_2_jours > 0:
+                    pond[col] = min(pond[col] + changement_pond, 1)
+                else:
+                    pond[col] = max(pond[col] - changement_pond, 0)
+                total_pond += pond[col]
+
+            for col in pond:
+                pond[col] /= total_pond
+
+        for col in df_returns.columns:
+            poids_ts.at[date, col] = pond[col]
+
+    return poids_ts
 """
 
 params = {
     "func_strat": fonction_trading,
     "requirements": ["pandas"],
     "tickers": ["ETHBTC", "BNBETH"],
-    "dates_calibration": ["2023-01-01", "2023-01-02"],
+    "dates_calibration": ["2022-01-01", "2022-01-07"],
     "dates_test" : ["2023-01-01", "2024-01-01"],
     "interval": "1d",
     "amount": "10000",
@@ -27,5 +48,5 @@ params = {
 }
 
 response = requests.post(url, json=params)
-print(response.json())
-print(pd.read_json(response.json(), orient="index"))
+response = response.json()
+print("Data received from response:", response)
