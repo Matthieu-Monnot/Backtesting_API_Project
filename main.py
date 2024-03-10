@@ -1,60 +1,116 @@
-import requests
+import json
+import os
+import subprocess
+import sys
 import pandas as pd
-from stats import equal_weighted, Stats
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from backtest import Stats
+from data_collector import DataCollector
 
-json_data = {
-    'code': 'ok',
-    'start': '2022-01-01',
-    'end': '2023-01-01',
-    'assets': ["BTC", "ETH", "BNB"]
-}
+app = FastAPI()
 
 
-def fetch_binance_data(asset, start_time, end_time):
-    api_url = 'https://api.binance.com/api/v3/klines'
-    start = int(start_time.timestamp() * 1000)
-    end = int(end_time.timestamp() * 1000)
-    all_data = []
-    params = {
-        'symbol': asset,
-        'interval': '1h',
-        'limit': 1000
-    }
-    while start < end:
-        params['startTime'] = start
-        response = requests.get(api_url, params=params)
-        if response.status_code == 200:
-            data = response.json()
-            all_data.extend(data)
-            start = int(data[-1][0]) + 1
-        else:
-            print("Erreur lors de la récupération des données:", response.status_code)
-            return None
-    df = pd.DataFrame(all_data, columns=['Open Time', 'Open', 'High', 'Low', 'Close', 'Volume', 'Close Time',
-                                         'Quote Asset Volume', 'Number of Trades', 'Taker Buy Base Asset Volume',
-                                         'Taker Buy Quote Asset Volume', 'ignore'])
-    df['Open Time'] = pd.to_datetime(df['Open Time'], unit='ms')
-    df['Close Time'] = pd.to_datetime(df['Close Time'], unit='ms')
-    df.drop(['ignore'], axis=1, inplace=True)
-    df = df[(df['Open Time'] >= start_time) & (df['Open Time'] < end_time)]
-    return df
+class UserInput(BaseModel):
+    """
+       Modèle de requête suivi par l'utilisateur :
+       - func_strat : La fonction de trading en str renvoyant un poids pour chaque actif à chaque date.
+       - requirements : Liste des imports nécessaires.
+       - tickers : Liste des tickers considérés.
+       - start_date : Date de début du backtest
+       - end_date : Date de fin du backtest
+       - interval : Fréquence des observations considérées.
+       - rqt_name : Nom de la requête pour identification.
+       """
+    func_strat: str
+    requirements: list[str]
+    tickers: list[str]
+    start_date: str
+    end_date: str
+    interval: str
+    rqt_name: str
 
 
-def load_all_data(assets, start, end):
-    data = dict()
-    for asset in assets:
-        data[asset] = fetch_binance_data(asset=f"{asset}USDT", start_time=start, end_time=end)
-    return data
+@app.post('/backtesting/')
+async def main(input: UserInput):
+    """
+    :param input: Données utilisateurs spécifiées dans le modèle User_input.
+    :return: Les statistiques de backtest obtenues -> json
+    Gère les appels aux différentes fonctions de l'architecture et le déroulement du backtest.
+    - Récupère les données avec collect_APIdata() -> dictionnaire de pd.DataFrame
+    - Ecrit la fonction utilisateur dans un .py temporaire
+    - Converti en json les pd.DataFrame à l'intérieur du dictionnaire user_data
+    - Ecrit les données dans un fichier .json temporaire
+    - Appel de create_venv pour créer un environnement virtuel avec les packages requis
+        par l'utilisateur. Run de sa fonction dans ce venv et récupération de l'output.
+    - Appel de la fonction backtesting pour récupérer les statistiques.
+    """
+    data_collector = DataCollector(input.tickers, input.start_date, input.end_date, input.interval)
+    try:
+        user_data = data_collector.collect_all_data()
+    except HTTPException as e:
+        raise HTTPException(status_code=400, detail=f'erreur : {str(e)}')
+
+    # Save du dataframe en json
+    with open("user_function.py", "w") as file:
+        file.write(input.func_strat)
+
+    # Conversion de chaque df en json
+    dico_df_json = {key: df.to_json() for key, df in user_data.items()}
+
+    # Serialisation du dico en json et save dans un fichier
+    with open("user_data.json", "w") as file:
+        json.dump(dico_df_json, file)
+
+    result_json = create_venv(input.rqt_name, input.requirements, "user_function.py")
+    result = pd.read_json(result_json, orient="index")
+
+    stats_backtest = backtesting(result, user_data)
+    os.remove(os.path.abspath("user_function.py"))
+    os.remove(os.path.abspath("user_data.json"))
+    return stats_backtest
 
 
-if __name__ == "__main__":
-    start = pd.Timestamp(json_data["start"])
-    end = pd.Timestamp(json_data["end"])
-    assets = json_data["assets"]
-    dict_data = load_all_data(assets=assets, start=start, end=end)
-    print(dict_data["BTC"])
+def create_venv(name, packages, funct):
+    """
+    :param name: Nom de la requête de l'utilisateur pour identification.
+    :param packages: packages donnés en input dans la requête de l'utilisateur.
+    :param funct: fonction donnée en input dans la requête de l'utilisateur.
+    :return: l'output défini par la fonction de l'utilisateur.
+    - Run un sous-processus avec l'interpréteur python qui créé un venv avec pour nom la requête de l'utilisateur
+    - Création du chemin vers le pip éxecutable pour le venv pour installer les packages
+    - Run d'un sous-processus par packages pour leurs installation dans le venv
+    - Création des paths vers les fichiers nécessaires (éxécutable, data, fonction, wrapper)
+    - Run d'un sous-processus d'éxécution du module script_wrapper avec les arguments data_path et function_path
+        Récupération des résultats de la fonction utilisateur par ce sous-processus -> pd.DataFrame
+    """
+    # Création de l'environnement virtuel
+    run_subprocess(sys.executable, "-m", "venv", name)
 
-    weights_ts = equal_weighted(dict_data)
-    stats = Stats(weights_ts, dict_data)
-    stats_json = stats.to_json()
-    print(stats_json)
+    # Création du chemin vers le pip executable pour l'env virtuel
+    pip_route = os.path.join(name, "Scripts" if os.name == "nt" else "bin", "pip")
+
+    # Installation des packages
+    for package in packages:
+        run_subprocess(pip_route, "install", package)
+
+    python_executable = os.path.join(name, "Scripts" if os.name == "nt" else "bin", "python")
+    function_path = os.path.abspath(funct)
+    wrapper_path = os.path.abspath("script_wrapper.py")
+    data_path = os.path.abspath("user_data.json")
+    response = run_subprocess(python_executable, wrapper_path, data_path, function_path, capture_output=True, text=True)
+    return response
+
+
+def backtesting(weights, dfs_dict):
+    backtest = Stats(weights, dfs_dict)
+    stats_bt = backtest.to_json()
+    return stats_bt
+
+
+def run_subprocess(*args, **kwargs):
+    try:
+        result = subprocess.run(args, check=True, **kwargs)
+        return result.stdout
+    except subprocess.CalledProcessError as e:
+        return f"Erreur dans l'éxécution du sous-processus : {e}"
