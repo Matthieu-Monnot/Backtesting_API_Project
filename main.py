@@ -5,8 +5,8 @@ import sys
 import pandas as pd
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from backtest import Stats
-from data_collector import DataCollector
+from Backtest import Stats
+from Data_collector import DataCollector
 
 app = FastAPI()
 
@@ -66,6 +66,9 @@ async def main(input: UserInput):
     result = pd.read_json(result_json, orient="index")
 
     stats_backtest = backtesting(result, user_data)
+    with open("stats_backtest.json", "w") as file:
+        json.dump(stats_backtest, file)
+
     os.remove(os.path.abspath("user_function.py"))
     os.remove(os.path.abspath("user_data.json"))
     return stats_backtest

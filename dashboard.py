@@ -1,7 +1,9 @@
-import streamlit as st
-import pandas as pd
-import numpy as np
+import os
+import json
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import streamlit as st
 
 
 def generate_fake_data(start_date, end_date):
@@ -31,19 +33,9 @@ def main():
     end_date = st.date_input('Date de fin', value=pd.to_datetime('2021-01-01'))
 
     # Affichage des indicateurs
-    stats_dict = {
-        'Rendement Annuel': 0.05,
-        'Volatilite Annuelle': 0.1,
-        'Ratio de Sharpe': 1.2,
-        'Skewness': 0.5,
-        'Kurtosis': 1.8,
-        'Semi-Deviation': 0.07,
-        'VaR Historique': 0.03,
-        'Drawdown Maximal': 0.1,
-        'Volatilite a la Baisse': 0.08,
-        'Ratio de Sortino': 1.5,
-        'Ratio de Calmar': 0.9
-    }
+    data_path = os.path.abspath("stats_backtest.json")
+    with open(data_path) as json_file:
+        stats_dict = json.load(json_file)
 
     for indicator, value in stats_dict.items():
         st.write(f"**{indicator}:** {value}")
