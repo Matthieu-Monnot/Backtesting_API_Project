@@ -4,7 +4,7 @@ import requests
 url = "https://backtestapi.onrender.com/backtesting/"
 fonction_trading = """
 import pandas
-def func_strat(dfs_dict):
+def func_strat(dfs_dict):v  
     df_returns = pandas.DataFrame()
     for key, df in dfs_dict.items():
         df_returns[key] = df["Close"]

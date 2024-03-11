@@ -7,11 +7,7 @@ import sys
 import os
 import json
 import Backtest
-from google.cloud import scheduler
-from google.oauth2 import service_account
-import google.cloud.storage
-import requests
-from google.cloud import storage
+
 
 app = FastAPI()
 
