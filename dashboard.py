@@ -37,7 +37,7 @@ def main():
         st.error('Erreur : La date de début doit être antérieure à la date de fin.')
 
     # Affichage des indicateurs
-    data_path = os.path.abspath("Data/stats_backtest.json")
+    data_path = os.path.abspath("stats_backtest.json")
     with open(data_path) as json_file:
         data = json.load(json_file)
 
