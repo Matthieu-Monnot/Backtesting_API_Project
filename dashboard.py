@@ -36,11 +36,8 @@ def main():
     else:
         st.error('Erreur : La date de début doit être antérieure à la date de fin.')
 
-    start_date = datetime.combine(start_date, datetime.min.time())
-    end_date = datetime.combine(end_date, datetime.min.time())
-
     # Affichage des indicateurs
-    data_path = os.path.abspath("stats_backtest.json")
+    data_path = os.path.abspath("Data/stats_backtest.json")
     with open(data_path) as json_file:
         data = json.load(json_file)
 
@@ -68,7 +65,7 @@ def main():
                     unsafe_allow_html=True)
 
     # Affichage des graphiques si les données sont disponibles
-    btc_data = get_binance_data(int(start_date.timestamp() * 1000), int(end_date.timestamp() * 1000))
+    btc_data = get_binance_data(start_date, end_date)
     btc_data['returns'] = btc_data['close'].pct_change() * 100
     st.line_chart(btc_data['returns'])
 
