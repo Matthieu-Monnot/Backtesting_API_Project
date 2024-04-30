@@ -62,7 +62,7 @@ def show_backtesting():
         start_date = st.date_input('Date de début', max_value=datetime.today() + timedelta(days=365 * 100), format="DD-MM-YYYY")
 
     with col2:
-        end_date = st.date_input('Date de fin', value= datetime.today() + timedelta(days=1), max_value=datetime.today() + timedelta(days=365 * 100), format="DD-MM-YYYY")
+        end_date = st.date_input('Date de fin', value= datetime.today() + timedelta(days=7), max_value=datetime.today() + timedelta(days=365 * 100), format="DD-MM-YYYY")
 
     if start_date < end_date:
         st.success('Dates sélectionnées valides !')
@@ -100,7 +100,7 @@ def show_backtesting():
 
             res = post(url=URL, json=data).json()
             st.success("Backtest réussi !")
-
+            res
 
             col1, col2 = st.columns(2)
 
