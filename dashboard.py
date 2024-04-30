@@ -1,4 +1,5 @@
-import json
+import ast
+
 import streamlit as st
 from datetime import datetime, timedelta
 from requests import post
@@ -87,11 +88,10 @@ def show_backtesting():
         with st.spinner("Calculating..."):
             data = {
                 "func_strat": func_strat,
-                "requirements": requirements,
-                "tickers": tickers,
+                "requirements": ast.literal_eval(requirements),
+                "tickers": ast.literal_eval(tickers),
                 "dates": [start, end],
                 "interval": interval,
-                "amount": "10000",
                 "request_id": request_id,
                 "is_recurring": is_recurring,
                 "repeat_frequency": repeat_frequency,
