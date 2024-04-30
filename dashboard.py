@@ -4,7 +4,6 @@ import requests
 import pandas as pd
 import streamlit as st
 from datetime import datetime, timezone
-import matplotlib.pyplot as plt
 
 
 def get_binance_data(start_date, end_date):
@@ -33,28 +32,6 @@ def get_color(value):
         return 'rgba(152, 251, 152, 0.7)'  # Vert pastel
     else:
         return 'rgba(255, 182, 193, 0.7)'
-
-
-def plot_returns(df):
-    # Créer une figure et un axe
-    fig, ax = plt.subplots(figsize=(10, 6))
-
-    # Définir les couleurs en fonction des rendements
-    colors = ['green' if ret >= 0 else 'red' for ret in df['returns %']]
-
-    # Plot des barres
-    ax.bar(df.index, df['returns %'], color=colors)
-
-    # Personnalisation du graphe
-    ax.set_title('Rendements en Pourcentage')
-    ax.set_xlabel('Date')
-    ax.set_ylabel('Rendements %')
-    ax.grid(True)
-
-    # Affichage du graphe
-    plt.xticks(rotation=45)
-    plt.tight_layout()
-    return fig
 
 
 def main():
@@ -108,8 +85,6 @@ def main():
     btc_data = get_binance_data(start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d'))
     btc_data = btc_data.astype(float)
     btc_data['returns %'] = btc_data['Close'].pct_change() * 100
-    fig = plot_returns(btc_data)
-    st.pyplot(fig)
 
     if st.checkbox('Afficher les données brutes'):
         st.write(btc_data)

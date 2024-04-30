@@ -4,7 +4,7 @@ import requests
 url = "https://backtestapi.onrender.com/backtesting/"
 fonction_trading = """
 import pandas
-def func_strat(dfs_dict):v  
+def func_strat(dfs_dict):
     df_returns = pandas.DataFrame()
     for key, df in dfs_dict.items():
         df_returns[key] = df["Close"]
@@ -40,11 +40,13 @@ params = {
     "func_strat": fonction_trading,
     "requirements": ["pandas"],
     "tickers": ["ETHBTC", "BNBETH"],
-    "dates_calibration": ["2022-01-01", "2023-01-07"],
-    "dates_test": ["2023-01-01", "2024-01-01"],
+    "dates": ["2022-01-01", "2023-01-07"],
     "interval": "1d",
     "amount": "10000",
-    "rqt_name": "rqt1"
+    "request_id": "requete_7121",
+    "is_recurring": False,
+    "repeat_frequency": 1,
+    "nb_execution": 4,
 }
 
 response = requests.post(url, json=params)
