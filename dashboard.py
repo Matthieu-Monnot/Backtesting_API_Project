@@ -51,7 +51,7 @@ def get_color(value):
 
 
 def show_homepage():
-    st.title("Modélisation et Pricing de produits structurés")
+    st.title("Backtesting de stratégie de trading")
     st.markdown("""
     **Objectif :** Le but de ce projet est de développer une API permettant aux utilisateurs de soumettre leurs propres stratégies de trading algorithmique pour backtesting. Le système doit être capable d’exécuter ces stratégies sur des données de marché historiques et de fournir des analyses de performance sur la période spécifiée.
     """)
@@ -104,27 +104,27 @@ def show_backtesting():
             st.success("Backtest réussi !")
 
 
-    col1, col2 = st.columns(2)
+        col1, col2 = st.columns(2)
 
-    # Afficher les informations dans la première colonne
-    with col1:
-        st.subheader('Performance')
-        for key, value in res.items():
-            if "Rendement" in key or "Ratio" in key:
-                color = get_color(value)
-                st.markdown(
-                    f'<div style="background-color: {color}; padding: 10px; border-radius: 5px;"><strong>{key}</strong>: {value:.4f}</div>',
-                    unsafe_allow_html=True)
+        # Afficher les informations dans la première colonne
+        with col1:
+            st.subheader('Performance')
+            for key, value in res.items():
+                if "Rendement" in key or "Ratio" in key:
+                    color = get_color(value)
+                    st.markdown(
+                        f'<div style="background-color: {color}; padding: 10px; border-radius: 5px;"><strong>{key}</strong>: {value:.4f}</div>',
+                        unsafe_allow_html=True)
 
-    # Afficher les informations dans la deuxième colonne
-    with col2:
-        st.subheader('Risque')
-        for key, value in res.items():
-            if "Volatilite" in key or "Deviation" in key or "VaR" in key or "Drawdown" in key or "Skewness" in key or "Kurtosis" in key:
-                color = get_color(value)
-                st.markdown(
-                    f'<div style="background-color: {color}; padding: 10px; border-radius: 5px;"><strong>{key}</strong>: {value:.4f}</div>',
-                    unsafe_allow_html=True)
+        # Afficher les informations dans la deuxième colonne
+        with col2:
+            st.subheader('Risque')
+            for key, value in res.items():
+                if "Volatilite" in key or "Deviation" in key or "VaR" in key or "Drawdown" in key or "Skewness" in key or "Kurtosis" in key:
+                    color = get_color(value)
+                    st.markdown(
+                        f'<div style="background-color: {color}; padding: 10px; border-radius: 5px;"><strong>{key}</strong>: {value:.4f}</div>',
+                        unsafe_allow_html=True)
 
 
 def main():
