@@ -76,6 +76,8 @@ def show_backtesting():
     request_id = st.text_input("Id de la requête. Doit être unique !", value="12345")
     is_recurring = st.selectbox("Répéter le backtest ?", [True, False])
 
+    start = start_date.strftime('%Y-%m-%d')
+    end = end_date.strftime('%Y-%m-%d')
     if is_recurring:
         repeat_frequency = st.number_input("fréquence de répétition", value=2)
     else:
@@ -87,7 +89,7 @@ def show_backtesting():
                 "func_strat": func_strat,
                 "requirements": requirements,
                 "tickers": tickers,
-                "dates": [start_date, end_date],
+                "dates": [start, end],
                 "interval": interval,
                 "amount": "10000",
                 "request_id": request_id,
