@@ -100,7 +100,7 @@ def show_backtesting():
 
             res = post(url=URL, json=data).json()
             st.success("Backtest réussi !")
-            res
+            print("res :", res)
 
             col1, col2 = st.columns(2)
 
