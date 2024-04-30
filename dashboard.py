@@ -70,7 +70,7 @@ def show_backtesting():
     else:
         st.error('Erreur : La date de début doit être antérieure à la date de fin.')
 
-    func_strat = st.text_input("Fonction de trading avec les imports", value="import pandas as pd \n def fonction_trading(df: pd.DataFrame):\n ... \n df_positions = pd.DataFrame() \n return df_positions")
+    func_strat = st.text_area("Fonction de trading avec les imports", value="import pandas as pd \n def fonction_trading(df: pd.DataFrame):\n ... \n df_positions = pd.DataFrame() \n return df_positions")
     requirements = st.text_input("Imports nécessaires à la stratégie", value=["pandas", "numpy"])
     tickers = st.text_input("Actifs utilisés dans la stratégie", value=["ETHBTC", "BNBETH"])
     interval = st.text_input("Fréquence des données de marché", value="1d")
