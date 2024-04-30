@@ -3,28 +3,44 @@ import json
 import requests
 import pandas as pd
 import streamlit as st
-from datetime import datetime, timezone
+from datetime import datetime, timedelta
+from requests import post
+import time
 
 
-def get_binance_data(start_date, end_date):
-    url = "https://data-api.binance.vision/api/v3/klines"
-    start_date = datetime.strptime(start_date, '%Y-%m-%d').replace(tzinfo=timezone.utc)
-    start_date = int(start_date.timestamp() * 1000)
-    end_date = datetime.strptime(end_date, '%Y-%m-%d').replace(tzinfo=timezone.utc)
-    end_date = int(end_date.timestamp() * 1000)
-    params = {
-        'symbol': "BTCUSDT",
-        'interval': "1d",
-        'startTime': start_date,
-        'endTime': end_date
-    }
-    response = requests.get(url, params=params)
-    data = response.json()
-    df = pd.DataFrame(data, columns=['Open_time', 'Open', 'High', 'Low', 'Close', 'Volume', 'Close_time',
-                                     'Quote_volume', 'Nb_trades', 'ignore1', 'ignore2', 'ignore3'])
-    df['Dates'] = pd.to_datetime(df['Open_time'], unit='ms')
-    df = df[['Close']].set_index(df['Dates'])
-    return df
+URL = "https://backtestapi.onrender.com/backtesting/"
+
+
+# Couleurs personnalisées
+background_color = "#f0f0f0"
+button_color = "#4CAF50"
+button_hover_color = "#45a049"
+text_color = "black"
+border_color = "black"
+
+# Configuration du style Streamlit
+st.markdown(
+    f"""
+    <style>
+    body {{
+        color: {text_color};
+        background-color: {background_color};
+    }}
+    .stButton>button {{
+        background-color: {button_color};
+        color: white;
+        font-weight: bold;
+        border-color: {border_color};
+        border-width: 2px;
+        border-style: solid;
+    }}
+    .stButton>button:hover {{
+        background-color: {button_hover_color};
+    }}
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
 
 def get_color(value):
@@ -34,35 +50,66 @@ def get_color(value):
         return 'rgba(255, 182, 193, 0.7)'
 
 
-def main():
-    st.title('Analyse des indicateurs financiers')
+def show_homepage():
+    st.title("Modélisation et Pricing de produits structurés")
+    st.markdown("""
+    **Objectif :** Le but de ce projet est de développer une API permettant aux utilisateurs de soumettre leurs propres stratégies de trading algorithmique pour backtesting. Le système doit être capable d’exécuter ces stratégies sur des données de marché historiques et de fournir des analyses de performance sur la période spécifiée.
+    """)
+
+
+def show_backtesting():
+    st.title('Backtesting de stratégie de trading')
 
     col1, col2 = st.columns(2)
 
     with col1:
-        start_date = st.date_input('Date de début', value=pd.to_datetime('2020-01-01'))
+        start_date = st.date_input('Date de début', max_value=datetime.today() + timedelta(days=365 * 100), format="DD-MM-YYYY")
 
     with col2:
-        end_date = st.date_input('Date de fin', value=pd.to_datetime('2021-01-01'))
-
+        end_date = st.date_input('Date de fin', max_value=datetime.today() + timedelta(days=365 * 100), format="DD-MM-YYYY")
 
     if start_date < end_date:
         st.success('Dates sélectionnées valides !')
     else:
         st.error('Erreur : La date de début doit être antérieure à la date de fin.')
 
-    # Affichage des indicateurs
-    data_path = os.path.abspath("stats_backtest.json")
-    with open(data_path) as json_file:
-        data = json.load(json_file)
+    func_strat = st.text("Fonction de trading avec les imports", value="import pandas as pd \n def fonction_trading(df: pd.DataFrame):\n ... \n df_positions = pd.DataFrame() \n return df_positions")
+    requirements = st.text("Imports nécessaires à la stratégie", value=["pandas", "numpy"])
+    tickers = st.text("Actifs utilisés dans la stratégie", value=["ETHBTC", "BNBETH"])
+    interval = st.text("Fréquence des données de marché", value="1d")
+    request_id = st.text("Id de la requête. Doit être unique !", value="12345")
+    is_recurring = st.selectbox("Répéter le backtest ?", [True, False])
 
-    # Diviser la page en 2 colonnes
+    if is_recurring:
+        repeat_frequency = st.number_input("fréquence de répétition", value=2)
+    else:
+        repeat_frequency = 0
+
+    if st.button("Backtest"):
+        with st.spinner("Calculating..."):
+            data = {
+                "func_strat": func_strat,
+                "requirements": requirements,
+                "tickers": tickers,
+                "dates": [start_date, end_date],
+                "interval": interval,
+                "amount": "10000",
+                "request_id": request_id,
+                "is_recurring": is_recurring,
+                "repeat_frequency": repeat_frequency,
+                "nb_execution": 1
+            }
+
+            res = post(url=URL, data=json.dumps(data)).json()
+            st.success("Backtest réussi !")
+
+
     col1, col2 = st.columns(2)
 
     # Afficher les informations dans la première colonne
     with col1:
         st.subheader('Performance')
-        for key, value in data.items():
+        for key, value in res.items():
             if "Rendement" in key or "Ratio" in key:
                 color = get_color(value)
                 st.markdown(
@@ -72,22 +119,25 @@ def main():
     # Afficher les informations dans la deuxième colonne
     with col2:
         st.subheader('Risque')
-        for key, value in data.items():
+        for key, value in res.items():
             if "Volatilite" in key or "Deviation" in key or "VaR" in key or "Drawdown" in key or "Skewness" in key or "Kurtosis" in key:
                 color = get_color(value)
                 st.markdown(
                     f'<div style="background-color: {color}; padding: 10px; border-radius: 5px;"><strong>{key}</strong>: {value:.4f}</div>',
                     unsafe_allow_html=True)
 
-    st.write('\n')
 
-    # Affichage des graphiques si les données sont disponibles
-    btc_data = get_binance_data(start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d'))
-    btc_data = btc_data.astype(float)
-    btc_data['returns %'] = btc_data['Close'].pct_change() * 100
+def main():
+    pages = {
+        "Page d'accueil": show_homepage,
+        "Backtest de stratégies": show_backtesting,
+    }
 
-    if st.checkbox('Afficher les données brutes'):
-        st.write(btc_data)
+    st.sidebar.title("Navigation")
+    selection = st.sidebar.radio("Go to", list(pages.keys()))
+
+    page = pages[selection]
+    page()
 
 
 if __name__ == "__main__":
