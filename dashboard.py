@@ -1,11 +1,7 @@
-import os
 import json
-import requests
-import pandas as pd
 import streamlit as st
 from datetime import datetime, timedelta
 from requests import post
-import time
 
 
 URL = "https://backtestapi.onrender.com/backtesting/"
@@ -66,7 +62,7 @@ def show_backtesting():
         start_date = st.date_input('Date de début', max_value=datetime.today() + timedelta(days=365 * 100), format="DD-MM-YYYY")
 
     with col2:
-        end_date = st.date_input('Date de fin', max_value=datetime.today() + timedelta(days=365 * 100), format="DD-MM-YYYY")
+        end_date = st.date_input('Date de fin', value= datetime.today() + timedelta(days=1), max_value=datetime.today() + timedelta(days=365 * 100), format="DD-MM-YYYY")
 
     if start_date < end_date:
         st.success('Dates sélectionnées valides !')
@@ -100,7 +96,7 @@ def show_backtesting():
                 "nb_execution": 1
             }
 
-            res = post(url=URL, data=json.dumps(data)).json()
+            res = post(url=URL, json=data).json()
             st.success("Backtest réussi !")
 
 
